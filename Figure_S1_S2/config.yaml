@@ -1,0 +1,33 @@
+cluster-generic-submit-cmd: mkdir -p logs/{rule} &&
+  sbatch
+    --account={resources.account}
+    --time={resources.time}
+    --job-name=smk-{rule}-{wildcards}
+    --output=logs/{rule}/{rule}-{wildcards}-%j.out
+    --error=logs/{rule}/{rule}-{wildcards}-%j.err
+    --mem-per-cpu={resources.mem_mb_per_cpu}
+    --cpus-per-task=4
+    --ntasks={resources.ntasks}
+    --cores-per-socket=1
+set-resources:
+  - foo:cpus_per_task=1
+default-resources:
+  - account="pas_lab"
+  - time=300
+  - cpus_per_task=1
+  - cores_per_node=1
+  - ntasks=1
+  - mem_mb_per_cpu=3000
+restart-times: 0
+max-jobs-per-second: 20
+max-status-checks-per-second: 1
+local-cores: 1
+latency-wait: 10
+jobs: 300
+keep-going: True
+keep-incomplete: True
+# rerun-incomplete: True
+printshellcmds: True
+scheduler: greedy
+use-conda: True
+executor: cluster-generic

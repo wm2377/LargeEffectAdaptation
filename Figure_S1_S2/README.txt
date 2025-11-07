@@ -1,0 +1,1 @@
+This code is used to generate Figures S1 and S2. These figures relied on simulations that implemented the individuals or all-alleles types of simulations, instead of the simplified all-allele simulations that were used elsewhere.

@@ -30,9 +30,15 @@ def process_simple_data(data,args):
     segregating_adaptation = np.array([sum([2*mut.a*(1-mut.trajectory[0]) for mut in i if mut.trajectory[0] < 1.0 and mut.trajectory[0]>0.0]) for i in fixations])
     new_fixations = total_fixations-segregating_fixations
     new_adaptation = total_adaptation - segregating_adaptation
+
+    first_fixations = []
+    for i in fixations:
+        if len(i)>0:
+            first_fixations.append([i[0]])
     
     return {'fixations':{'total':total_fixations,'segregating':segregating_fixations,'new':new_fixations},
-            'adaptation':{'total':total_adaptation,'segregating':segregating_adaptation,'new':new_adaptation}}
+            'adaptation':{'total':total_adaptation,'segregating':segregating_adaptation,'new':new_adaptation}.
+            'first_fixations':first_fixations}
     
 def process_data_for_dsq(data,args):
     # To find when the quasi-static state is reached, we need to find where 2*D*V=U

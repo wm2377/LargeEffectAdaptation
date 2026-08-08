@@ -1,0 +1,154 @@
+"""Generate Supplementary Figures S1 and S2 from the C++ simulations.
+
+Figure S2 comes from the all-allele model alone; Figure S1 additionally needs the
+individual-based sweep, which is restricted to 2NU <= 1 (see INDIVIDUAL_LARGE_2NU).
+"""
+
+import os
+
+import numpy as np
+
+BASE = os.path.dirname(os.path.dirname(os.path.abspath(workflow.snakefile)))
+SCRIPTS = os.path.join(BASE, "scripts")
+DATA = os.path.join(BASE, "data")
+DATA_INDIVIDUAL = os.path.join(BASE, "data_individual")
+FIGURES = os.path.join(BASE, "figures")
+
+# ---- the grid ------------------------------------------------------------------------
+N = 5000
+SIGMA2 = [4, 40, 80]
+SHIFT = [50, 80]
+# 12 log-spaced mutational inputs, 1e-3 .. ~3.2e2 (the 13-point grid's top value, 2NU =
+# 1000, was never simulated for the manuscript and is dropped here too).
+LARGE_2NU = [float(x) for x in np.logspace(-3, 3, 13)[:-1]]
+
+# Replicates per combination, threads per job, and the burn-in / recorded run lengths in
+# units of N generations.
+REPLICATES = 100
+THREADS = 2
+BURN_TIME_N = 10
+RUN_TIME_N = 4
+
+# Individual-based sweep (Figure S1 only). 
+INDIVIDUAL_SIGMA2 = 4
+INDIVIDUAL_LARGE_2NU = [u for u in LARGE_2NU if u <= 1.0]
+INDIVIDUAL_THREADS = 16
+
+
+def cell(sigma2, large_2NU, shift):
+    return os.path.join(DATA, f"sigma2_{sigma2}", f"LargeN2U_{large_2NU}",
+                        f"shift_{shift}")
+
+
+ALL_CELLS = [(sigma2, large_2NU, shift)
+             for sigma2 in SIGMA2 for shift in SHIFT for large_2NU in LARGE_2NU]
+
+
+ALL_INDIVIDUAL_CELLS = [(INDIVIDUAL_SIGMA2, u, sh)
+                        for sh in SHIFT for u in INDIVIDUAL_LARGE_2NU]
+
+
+def individual_cell(sigma2, large_2NU, shift):
+    return os.path.join(DATA_INDIVIDUAL, f"sigma2_{sigma2}", f"LargeN2U_{large_2NU}",
+                        f"shift_{shift}")
+
+
+rule all:
+    input:
+        os.path.join(FIGURES, "Figure_S1.png"),
+        os.path.join(FIGURES, "Figure_S2.png"),
+
+
+rule combination:
+    """Every replicate of one (sigma2, 2NU, shift) cell, run threaded and pooled in place.
+    """
+    output:
+        aggregate = os.path.join(DATA, "sigma2_{sigma2}", "LargeN2U_{large_2NU}",
+                                 "shift_{shift}",
+                                 "all_processed_results_with_mutation_counts.pkl"),
+        skew = os.path.join(DATA, "sigma2_{sigma2}", "LargeN2U_{large_2NU}",
+                            "shift_{shift}", "skew_results.pkl"),
+    params:
+        sigma2      = lambda wc: float(wc.sigma2),
+        large_2NU   = lambda wc: float(wc.large_2NU),
+        shift       = lambda wc: float(wc.shift),
+        replicates  = REPLICATES,
+        N           = N,
+        burn_time_N = BURN_TIME_N,
+        run_time_N  = RUN_TIME_N,
+    threads: THREADS
+    resources:
+        # 2 GB per job (THREADS x this). 
+        mem_mb_per_cpu = 1000,
+        time = 720,
+        cpus_per_task = THREADS,
+        ntasks = 1,
+    script:
+        os.path.join(SCRIPTS, "run_combination.py")
+
+
+rule figure_S2:
+    """Draw Figure S2 from whatever cells exist (missing ones are reported, not fatal)."""
+    input:
+        aggregates = [os.path.join(cell(s, u, sh),
+                                   "all_processed_results_with_mutation_counts.pkl")
+                      for (s, u, sh) in ALL_CELLS],
+        skew = [os.path.join(cell(s, u, sh), "skew_results.pkl")
+                for (s, u, sh) in ALL_CELLS],
+    output:
+        os.path.join(FIGURES, "Figure_S2.png"),
+    params:
+        data_root = DATA,
+    resources:
+        mem_mb_per_cpu = 8000,
+        time = 60,
+        cpus_per_task = 1,
+        ntasks = 1,
+    script:
+        os.path.join(SCRIPTS, "make_figure_S2.py")
+
+
+rule individual_combination:
+    """Every replicate of one individual-based cell, run threaded and pooled in place."""
+    output:
+        summary = os.path.join(DATA_INDIVIDUAL, "sigma2_{sigma2}", "LargeN2U_{large_2NU}",
+                               "shift_{shift}", "individual_summary.pkl"),
+    params:
+        sigma2      = lambda wc: float(wc.sigma2),
+        large_2NU   = lambda wc: float(wc.large_2NU),
+        shift       = lambda wc: float(wc.shift),
+        replicates  = REPLICATES,
+        N           = N,
+        burn_time_N = BURN_TIME_N,
+        run_time_N  = RUN_TIME_N,
+    threads: INDIVIDUAL_THREADS
+    resources:
+        # ~170 MB measured at 16 threads; this is ample.
+        mem_mb_per_cpu = 200,
+        time = 720,
+        cpus_per_task = INDIVIDUAL_THREADS,
+        ntasks = 1,
+    script:
+        os.path.join(SCRIPTS, "run_individual_combination.py")
+
+
+rule figure_S1:
+    """Large-effect fixations: individual-based against all-allele, at sigma2 = 4."""
+    input:
+        individual = [os.path.join(individual_cell(s, u, sh), "individual_summary.pkl")
+                      for (s, u, sh) in ALL_INDIVIDUAL_CELLS],
+        all_allele = [os.path.join(cell(INDIVIDUAL_SIGMA2, u, sh),
+                                   "all_processed_results_with_mutation_counts.pkl")
+                      for sh in SHIFT for u in LARGE_2NU],
+    output:
+        os.path.join(FIGURES, "Figure_S1.png"),
+    params:
+        data_root       = DATA,
+        individual_root = DATA_INDIVIDUAL,
+    resources:
+        mem_mb_per_cpu = 4000,
+        time = 60,
+        cpus_per_task = 1,
+        ntasks = 1,
+    script:
+        os.path.join(SCRIPTS, "make_figure_S1.py")

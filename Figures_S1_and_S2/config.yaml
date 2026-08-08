@@ -1,0 +1,31 @@
+# Snakemake profile for this workflow: SLURM submission only.
+
+executor: cluster-generic
+
+cluster-generic-submit-cmd: mkdir -p logs/{rule} &&
+  sbatch
+    --account={resources.account}
+    --job-name=smk-{rule}-{wildcards}
+    --output=logs/{rule}/{rule}-{wildcards}-%j.out
+    --error=logs/{rule}/{rule}-{wildcards}-%j.err
+    --time={resources.time}
+    --mem-per-cpu={resources.mem_mb_per_cpu}
+    --cpus-per-task={threads}
+    --ntasks={resources.ntasks}
+    --parsable
+
+default-resources:
+  - account="pas_lab"
+  - time=720
+  - mem_mb_per_cpu=1000
+  - ntasks=1
+
+jobs: 72
+local-cores: 1
+
+restart-times: 0
+max-jobs-per-second: 10
+max-status-checks-per-second: 1
+latency-wait: 60
+keep-going: True
+printshellcmds: True

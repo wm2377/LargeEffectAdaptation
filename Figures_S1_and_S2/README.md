@@ -77,18 +77,3 @@ both effect-size bins, plus each replicate's fixed effect sizes) and `skew_resul
     snakemake --profile .        # both figures, on the cluster
     snakemake --cores 4          # locally
     snakemake --profile . figures/Figure_S2.png    # one figure only
-
-Requires `g++` with C++17 and the packages in `requirements.txt`. The full all-allele grid
-is roughly 20 CPU-hours; individual-based cells at `2NU ≤ 1` are about 40 minutes each on
-16 threads.
-
-## Known limitations
-
-- The individual-based sweep covers `2NU ≤ 1` only (`INDIVIDUAL_LARGE_2NU` in the
-  `Snakefile`). Above that its per-generation cost is
-  still rising after 4,000 generations — the sojourn-density initial state is not the model's
-  equilibrium at high mutational input — so those cells need a measured budget first.
-  `scripts/cpp/bench_individual.cpp` is the harness for that.
-- Effect-size bins and the large-effect threshold (`all_allele_cpp.BIN_LIMITS`,
-  `SKEW_MAX_A`) are fixed before a run: the cores accumulate moments as they go and keep no
-  per-generation allele records, so changing either requires re-running.

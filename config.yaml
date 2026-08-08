@@ -1,0 +1,37 @@
+cluster-generic-submit-cmd: mkdir -p logs/{rule} &&
+  sbatch
+    --account={resources.account}
+    --time={resources.time}
+    --job-name=smk-{rule}-{wildcards}
+    --output=logs/{rule}/{rule}-{wildcards}-%j.out
+    --error=logs/{rule}/{rule}-{wildcards}-%j.err
+    --mem={resources.mem_mb}
+    --cpus-per-task={threads}
+    --ntasks={resources.ntasks}
+    --cores-per-socket=1
+    --sockets-per-node=1
+    --partition={resources.partition}
+default-resources:
+  - account="pas_lab"
+  - partition="short"
+  - time=720
+  - ntasks=1
+  - mem_mb=3000
+restart-times: 0
+max-status-checks-per-second: 20
+local-cores: 1
+latency-wait: 3
+jobs: 200
+# total core budget across concurrent cluster jobs. A rule's effective threads
+# is min(threads, cores), so this must be >= the largest threads: in any rule
+# (run_simulation uses 16). Set to jobs * max_threads to allow full concurrency.
+cores: 1600
+keep-going: True
+keep-incomplete: True
+# re-execute jobs whose output Snakemake marked incomplete (e.g. a timed-out
+# run_simulation); without this Snakemake errors out instead of resuming them.
+rerun-incomplete: True
+printshellcmds: True
+scheduler: greedy
+use-conda: True
+executor: cluster-generic

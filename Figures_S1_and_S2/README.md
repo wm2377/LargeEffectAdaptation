@@ -6,11 +6,11 @@ Simulation code for Supplementary Figures S1 and S2.
 
 Two simulation models are implemented, and Figure S1 exists to compare them:
 
-1. **All-allele** (`scripts/cpp/all_allele_core.cpp`) tracks allele frequencies under a diffusion
+1. **All-allele** (`cpp/all_allele_core.cpp`) tracks allele frequencies under a diffusion
    approximation: each generation an allele's expected frequency change is computed in
    closed form and the realized change drawn from a binomial. Cheap — a full replicate is
    about a second — so it carries the whole parameter grid.
-2. **Individual-based** (`scripts/cpp/individual_core.cpp`) tracks explicit diploid genotypes:
+2. **Individual-based** (`cpp/individual_core.cpp`) tracks explicit diploid genotypes:
    2N parents are drawn in proportion to `exp(-(z - optimum)² / 2V_S)`, each contributes a
    gamete under free recombination, and gametes pair into offspring. Drift and selection
    emerge from sampling individuals rather than from a diffusion limit, which is what makes
@@ -26,7 +26,7 @@ the per-generation summaries the figures need (per-effect-size-bin moments, skew
 trajectories, fixation records) as they go, so the per-generation allele records are never
 materialised.
 
-Both figures are driven by `scripts/Snakefile`, one job per parameter cell; the grid,
+Both figures are driven by `Snakefile`, one job per parameter cell; the grid,
 replicate count and threads live at the top of it, and `config.yaml` beside it carries only
 SLURM submission settings. Finished replicates are skipped, so an interrupted cell resumes
 from what it completed.
@@ -66,14 +66,13 @@ both effect-size bins, plus each replicate's fixed effect sizes) and `skew_resul
 
 | Module | Role |
 |---|---|
-| `all_allele_cpp.py`, `scripts/cpp/all_allele_core.cpp` | the all-allele C++ core and its ctypes bridge |
-| `individual_cpp.py`, `scripts/cpp/individual_core.cpp` | the individual-based C++ core and its bridge |
+| `all_allele_cpp.py`, `cpp/all_allele_core.cpp` | the all-allele C++ core and its ctypes bridge |
+| `individual_cpp.py`, `cpp/individual_core.cpp` | the individual-based C++ core and its bridge |
 | `all_allele_model.py` | numpy implementation of the all-allele model (reference) |
-| `scripts/cpp/bench_individual.cpp` | timing harness for the individual core, run without Python |
+| `cpp/bench_individual.cpp` | timing harness for the individual core, run without Python |
 
 ## Running
 
-    cd scripts
     snakemake --profile .        # both figures, on the cluster
     snakemake --cores 4          # locally
     snakemake --profile . figures/Figure_S2.png    # one figure only
